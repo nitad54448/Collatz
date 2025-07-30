@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collatz Conjecture Visualizer</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js for visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+
+    <style>
+        /* Custom styles for the page */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #18181b; /* Zinc 900 */
+            color: #d4d4d8; /* Zinc 300 */
+        }
+
+        h1, h2, .font-mono {
+            font-family: 'Fira Code', monospace;
+        }
+
+        /* Custom styling for the number input */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        /* Custom scrollbar for the results panel */
+        #sequence-output::-webkit-scrollbar {
+            width: 8px;
+        }
+        #sequence-output::-webkit-scrollbar-track {
+            background: #27272a; /* Zinc 800 */
+        }
+        #sequence-output::-webkit-scrollbar-thumb {
+            background-color: #52525b; /* Zinc 600 */
+            border-radius: 4px;
+            border: 2px solid #27272a;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-6xl">
+
+        <!-- Header Section -->
+        <header class="text-center my-8">
+            <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-2">Collatz Conjecture</h1>
+            <p class="text-base text-zinc-400">The simplest, unsolved problem in mathematics.</p>
+        </header>
+
+        <!-- Input Section -->
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 mb-8 max-w-2xl mx-auto shadow-lg">
+            <div class="flex flex-col sm:flex-row gap-4">
+                <input type="number" id="number-input" placeholder="Enter a number, e.g., 27" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-3 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono">
+                <button id="start-btn" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-300">
+                    Visualize
+                </button>
+            </div>
+            <p id="error-message" class="text-red-400 mt-3 text-sm h-5"></p>
+            
+            <!-- How it works section -->
+            <div class="mt-6 border-t border-zinc-800 pt-4">
+                <h3 class="text-lg font-semibold text-white mb-2">How it works:</h3>
+                <ol class="list-decimal list-inside text-zinc-400 space-y-2">
+                    <li>Start with any positive integer, <span class="font-mono text-emerald-400">n</span>.</li>
+                    <li>If <span class="font-mono text-emerald-400">n</span> is <span class="font-semibold text-white">even</span>, the next number is <span class="font-mono text-emerald-400">n / 2</span>.</li>
+                    <li>If <span class="font-mono text-emerald-400">n</span> is <span class="font-semibold text-white">odd</span>, the next number is <span class="font-mono text-emerald-400">3n + 1</span>.</li>
+                    <li>Repeat the process with the new number. The conjecture is that you will always eventually reach 1.</li>
+                </ol>
+                <p class="mt-4 text-zinc-400">
+                    <span class="font-semibold text-white">Why is it unsolved?</span> While computers have tested quintillions of numbers and found they all reach 1, this isn't a mathematical proof. A proof must show it's true for <span class="italic">every</span> positive integer. No one has found a pattern that guarantees the sequence doesn't either grow to infinity or get stuck in another loop for some incredibly large number.
+                </p>
+            </div>
+        </div>
+
+        <!-- Results Area -->
+        <div id="results-container" class="hidden">
+            <!-- Statistics -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8 text-center">
+                <div class="bg-zinc-900 border border-zinc-800 p-4 rounded-xl">
+                    <p class="text-sm text-zinc-400">Starting Number</p>
+                    <p id="stat-start" class="text-2xl font-bold text-white font-mono">0</p>
+                </div>
+                <div class="bg-zinc-900 border border-zinc-800 p-4 rounded-xl">
+                    <p class="text-sm text-zinc-400">Total Steps</p>
+                    <p id="stat-steps" class="text-2xl font-bold text-white font-mono">0</p>
+                </div>
+                <div class="bg-zinc-900 border border-zinc-800 p-4 rounded-xl">
+                    <p class="text-sm text-zinc-400">Highest Value</p>
+                    <p id="stat-max" class="text-2xl font-bold text-white font-mono">0</p>
+                </div>
+            </div>
+
+            <!-- Main output grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Sequence List -->
+                <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-lg">
+                    <h2 class="text-2xl font-semibold text-white mb-4">The Sequence</h2>
+                    <div id="sequence-output" class="bg-zinc-950 p-4 rounded-lg h-96 overflow-y-auto font-mono text-lg text-zinc-300 leading-relaxed break-words">
+                        <!-- Sequence will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Chart -->
+                <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-lg">
+                    <h2 class="text-2xl font-semibold text-white mb-4">The Journey</h2>
+                    <div class="relative h-96">
+                        <canvas id="collatz-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Element References ---
+            const numberInput = document.getElementById('number-input');
+            const startBtn = document.getElementById('start-btn');
+            const errorMessage = document.getElementById('error-message');
+            const resultsContainer = document.getElementById('results-container');
+            const sequenceOutput = document.getElementById('sequence-output');
+            
+            // Stats
+            const statStart = document.getElementById('stat-start');
+            const statSteps = document.getElementById('stat-steps');
+            const statMax = document.getElementById('stat-max');
+
+            // Chart
+            const chartCanvas = document.getElementById('collatz-chart');
+            let collatzChart = null;
+            
+            // --- Functions ---
+
+            /**
+             * Generates the Collatz sequence for a given starting number.
+             * @param {number} startNum - The starting positive integer.
+             * @returns {Array<number>} An array containing the sequence.
+             */
+            function generateCollatzSequence(startNum) {
+                const sequence = [startNum];
+                let currentNum = startNum;
+
+                // Set a safety limit to prevent infinite loops with extremely large numbers
+                const maxSteps = 10000; 
+                let steps = 0;
+
+                while (currentNum > 1 && steps < maxSteps) {
+                    if (currentNum % 2 === 0) {
+                        currentNum = currentNum / 2;
+                    } else {
+                        currentNum = (currentNum * 3) + 1;
+                    }
+                    sequence.push(currentNum);
+                    steps++;
+                }
+                return sequence;
+            }
+
+            /**
+             * Renders the sequence and chart on the page.
+             * @param {Array<number>} sequence - The array of numbers in the sequence.
+             */
+            function renderResults(sequence) {
+                // Display the sequence as text
+                sequenceOutput.innerHTML = sequence.map((num, index) => {
+                    const numberSpan = `<span class="text-emerald-400">${num.toLocaleString()}</span>`;
+                    return index === sequence.length - 1 ? numberSpan : `${numberSpan} <span class="text-zinc-500">→</span> `;
+                }).join('');
+                
+                // Update stats
+                statStart.textContent = sequence[0].toLocaleString();
+                statSteps.textContent = (sequence.length - 1).toLocaleString();
+                statMax.textContent = Math.max(...sequence).toLocaleString();
+
+                // Render the chart
+                renderChart(sequence);
+
+                // Show the results container
+                resultsContainer.classList.remove('hidden');
+            }
+
+            /**
+             * Renders the chart using Chart.js.
+             * @param {Array<number>} sequence - The array of numbers in the sequence.
+             */
+            function renderChart(sequence) {
+                if (collatzChart) {
+                    collatzChart.destroy();
+                }
+
+                const labels = sequence.map((_, index) => index);
+                const data = {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Value',
+                        data: sequence,
+                        borderColor: '#34d399', // emerald-400
+                        backgroundColor: 'rgba(52, 211, 153, 0.1)',
+                        fill: true,
+                        tension: 0.1,
+                        pointRadius: sequence.length > 100 ? 0 : 3, // Hide points for long sequences
+                    }]
+                };
+
+                const config = {
+                    type: 'line',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { color: '#a1a1aa' }, // zinc-400
+                                grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                            },
+                            x: {
+                                ticks: { color: '#a1a1aa' }, // zinc-400
+                                grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
+                };
+
+                collatzChart = new Chart(chartCanvas, config);
+            }
+
+            /**
+             * Handles the main logic when the button is clicked.
+             */
+            function handleStart() {
+                errorMessage.textContent = '';
+                const inputValue = numberInput.value;
+
+                if (!inputValue) {
+                    errorMessage.textContent = 'Please enter a number.';
+                    return;
+                }
+
+                const number = parseInt(inputValue, 10);
+
+                if (isNaN(number) || number < 1) {
+                    errorMessage.textContent = 'Please enter a positive integer greater than 0.';
+                    return;
+                }
+                
+                if (number > 1000000) {
+                    errorMessage.textContent = 'For performance, please choose a number under 1,000,000.';
+                    return;
+                }
+
+                const sequence = generateCollatzSequence(number);
+                renderResults(sequence);
+            }
+
+            // --- Event Listeners ---
+            startBtn.addEventListener('click', handleStart);
+            numberInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    handleStart();
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
